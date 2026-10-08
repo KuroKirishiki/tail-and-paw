@@ -7,6 +7,7 @@
 const P={ink:'#111111',dark:'#333333',gray:'#777777',sand:'#BEB8AD',paper:'#E6E1D7',bg:'#F6F4EE'},W=1920,H=1080,T=60;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const hit=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+const plateContact=(p,b)=>p.x+p.w>b.x+6&&p.x<b.x+b.w-6&&p.y+p.h>=b.y-5&&p.y+p.h<=b.y+b.h+9&&Math.abs(p.vy)<40;
 function rect(c,x,y,w,h,color,r=8,stroke=true){c.beginPath();c.roundRect(x,y,w,h,r);c.fillStyle=color;c.fill();if(stroke){c.strokeStyle=P.ink;c.lineWidth=2;c.stroke()}}
 function ellipse(c,x,y,rx,ry,color,stroke=true){c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fillStyle=color;c.fill();if(stroke){c.strokeStyle=P.ink;c.lineWidth=2;c.stroke()}}
 function text(c,s,x,y,size=22,color=P.ink,align='left'){c.font=`${size}px Arial`;c.textAlign=align;c.fillStyle=color;c.fillText(s,x,y)}
@@ -47,7 +48,7 @@ class Player extends Entity{
  if(i.tap(jump))this.buffer=.12;
  if(dog&&i.tap(special)&&this.cooldown===0){this.dash=.18;this.cooldown=2;this.vx=this.face*1000;g.audio.play('dash');g.audio.play('bark')}
  // Кошка цепляется вниз, затем вверх/вниз перемещается по верёвке.
- if(!dog&&i.held(special)&&!this.rope)this.rope=l.ropes.find(r=>hit(this,{x:r.x-35,y:r.y,w:70,h:r.h}));
+ if(!dog&&i.held(special)&&!this.rope&&!l.buttons.some(b=>plateContact(this,b)))this.rope=l.ropes.find(r=>hit(this,{x:r.x-35,y:r.y,w:70,h:r.h}));
  if(this.rope){const r=this.rope;if(i.held(left)||i.held(right)||!hit(this,{x:r.x-60,y:r.y-20,w:120,h:r.h+40})){this.rope=null}else{this.vx=0;this.vy=0;this.x=r.x-this.w/2;this.y+=((i.held(special)?1:0)-(i.held(jump)?1:0))*250*dt;this.y=clamp(this.y,r.y-this.h,r.y+r.h-this.h);this.grounded=false;this.extra=1;this.buffer=0;this.anim+=dt;return}}
  const direction=Number(i.held(right))-Number(i.held(left));if(direction)this.face=direction;
  if(this.dash>0){this.vx=this.face*1000;g.particles.burst(this.x+this.w/2,this.y+this.h,2)}else{const target=direction*(this.crouch?150:360);this.vx+=(target-this.vx)*Math.min(1,dt*(direction?12:17))}
@@ -129,7 +130,7 @@ class Level{
  this.projectiles=this.projectiles.filter(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;return p.life>0&&p.y<H+100&&!this.solids().some(s=>hit(p,s))});
  }
  interactions(dt=0){const g=this.game;
- const onPlate=(p,b)=>p.x+p.w>b.x+6&&p.x<b.x+b.w-6&&p.y+p.h>=b.y-5&&p.y+p.h<=b.y+b.h+9&&Math.abs(p.vy)<40;
+ const onPlate=plateContact;
  for(const b of this.buttons)b.active=g.players.some(p=>onPlate(p,b));
  this.pairActive=this.buttons.length===2&&((onPlate(g.players[0],this.buttons[0])&&onPlate(g.players[1],this.buttons[1]))||(onPlate(g.players[0],this.buttons[1])&&onPlate(g.players[1],this.buttons[0])));
 
